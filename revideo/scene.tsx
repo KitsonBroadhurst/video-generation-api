@@ -28,8 +28,8 @@ interface captionSettings {
 }
 
 const textSettings: captionSettings = {
-	fontSize: 80,
-	numSimultaneousWords: 4, // how many words are shown at most simultaneously
+	fontSize: 50,
+	numSimultaneousWords: 6, // how many words are shown at most simultaneously
 	textColor: 'white',
 	fontWeight: 800,
 	fontFamily: 'Mulish',
@@ -37,8 +37,8 @@ const textSettings: captionSettings = {
 	textAlign: 'center',
 	textBoxWidthInPercent: 70,
 	fadeInAnimation: true,
-	currentWordColor: 'cyan',
-	currentWordBackgroundColor: 'red', // adds a colored box to the word currently spoken
+	currentWordColor: '#FFFFFF',
+	currentWordBackgroundColor: '#005A9C', // adds a colored box to the word currently spoken
 	shadowColor: 'black',
 	shadowBlur: 30,
 };
@@ -49,9 +49,7 @@ const textSettings: captionSettings = {
 export default makeScene2D('main', function* (view) {
 	const images = useScene().variables.get('images', [])();
 	const audioUrl = useScene().variables.get('audioUrl', 'none')();
-	const words = useScene().variables.get('words', [])();
-
-	const duration = words[words.length - 1].end + 0.5;
+	const words: Word[] = useScene().variables.get('words', [])();
 
 	const imageContainer = createRef<Layout>();
 	const textContainer = createRef<Layout>();
@@ -59,22 +57,24 @@ export default makeScene2D('main', function* (view) {
 	yield view.add(
 		<>
 			<Layout size={'100%'} ref={imageContainer} />
-			<Layout size={'100%'} ref={textContainer} />
+			<Layout size={['100%', '40%']} ref={textContainer} position={[0, 300]} />
 			<Audio src={audioUrl} play={true} />
 		</>,
 	);
 
 	yield* all(
-		displayImages(imageContainer, images, duration),
+		displayImages(imageContainer, images),
 		displayWords(textContainer, words, textSettings),
 	);
 });
 
-function* displayImages(container: Reference<Layout>, images: string[], totalDuration: number) {
+function* displayImages(container: Reference<Layout>, images: {url: string; startTime: number}[]) {
+	let startTime = images[0].startTime;
 	for (const img of images) {
 		const ref = createRef<Img>();
-		container().add(<Img src={img} size={['100%', '100%']} ref={ref} zIndex={0} />);
-		yield* waitFor(totalDuration / images.length);
+		container().add(<Img src={img.url} size={['100%', '100%']} ref={ref} zIndex={0} />);
+		yield* waitFor(img.startTime - startTime);
+		startTime = img.startTime;
 	}
 }
 
@@ -160,7 +160,7 @@ function* displayWords(container: Reference<Layout>, words: Word[], settings: ca
 				/>,
 			);
 
-			const wordRefs = [];
+			const wordRefs: Reference<Txt>[] = [];
 			const opacitySignal = createSignal(settings.fadeInAnimation ? 0.5 : 1);
 			for (let j = 0; j < currentBatch.length; j++) {
 				const word = currentBatch[j];
@@ -200,8 +200,8 @@ function* displayWords(container: Reference<Layout>, words: Word[], settings: ca
 					container,
 					currentBatch,
 					wordRefs,
-					settings.currentWordColor,
-					settings.currentWordBackgroundColor,
+					settings.currentWordColor ?? '',
+					settings.currentWordBackgroundColor ?? '',
 				),
 				waitFor(currentBatch[currentBatch.length - 1].end - currentBatch[0].start + waitAfter),
 			);
