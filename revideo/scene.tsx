@@ -51,6 +51,8 @@ export default makeScene2D('main', function* (view) {
 	const audioUrl = useScene().variables.get('audioUrl', 'none')();
 	const words: Word[] = useScene().variables.get('words', [])();
 
+	const totalTime = words[words.length - 1].end + 0.5;
+
 	const imageContainer = createRef<Layout>();
 	const textContainer = createRef<Layout>();
 
@@ -63,18 +65,25 @@ export default makeScene2D('main', function* (view) {
 	);
 
 	yield* all(
-		displayImages(imageContainer, images),
+		displayImages(imageContainer, images, totalTime),
 		displayWords(textContainer, words, textSettings),
 	);
 });
 
-function* displayImages(container: Reference<Layout>, images: {url: string; startTime: number}[]) {
-	let startTime = images[0].startTime;
-	for (const img of images) {
+function* displayImages(
+	container: Reference<Layout>,
+	images: {url: string; startTime: number}[],
+	totalTime: number,
+) {
+	for (const index of images.keys()) {
 		const ref = createRef<Img>();
-		container().add(<Img src={img.url} size={['100%', '100%']} ref={ref} zIndex={0} />);
-		yield* waitFor(img.startTime - startTime);
-		startTime = img.startTime;
+		container().add(<Img src={images[index].url} size={['100%', '100%']} ref={ref} zIndex={0} />);
+		// if it's the last one, use totalTime
+		if (index === images.length - 1) {
+			yield* waitFor(totalTime - images[index].startTime);
+		} else {
+			yield* waitFor(images[index + 1].startTime - images[index].startTime);
+		}
 	}
 }
 
